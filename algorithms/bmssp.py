@@ -18,7 +18,7 @@ import time
 from typing import Set, Dict, Tuple
 from .pivot import find_pivots
 from .dstructs import PartialSortingDS
-from .dijkstra import dijkstra  # full Dijkstra
+from .dijkstra import mini_dijkstra  # full Dijkstra
 import heapq
 
 def BMSSP_recursive(graph, l: int, B: float, S: Set[int], distances: Dict[int, float],
