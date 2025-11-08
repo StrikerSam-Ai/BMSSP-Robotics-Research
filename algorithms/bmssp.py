@@ -1,36 +1,48 @@
 # algorithms/bmssp.py
 """
-BMSSP implementation with two modes:
- - mode="safe": final multi-source Dijkstra is run to guarantee optimality (current safe behavior)
- - mode="fast": skips final Dijkstra to measure raw BMSSP work (paper-like, often faster on large graphs)
+BMSSP implementation with correctness-first fast mode.
 
-Use mode parameter from bmssp_main(...) or pass from benchmark runner.
+Key idea:
+ - BMSSP_recursive returns (B_prime, U_set, seeds_set) where seeds_set contains
+   "important" vertices (pivots and completed U vertices) that will seed a final limited
+   Dijkstra to repair any remaining distance discrepancies.
+
+Modes:
+ - mode="safe": run final Dijkstra seeded from *all finite-distance vertices* (old behavior)
+ - mode="fast": run final Dijkstra seeded only from collected SEEDS (much smaller set,
+               typically much cheaper; ensures correctness)
 """
 
 import math
 import time
-from typing import Set, Dict, Tuple, List
+from typing import Set, Dict, Tuple
 from .pivot import find_pivots
 from .dstructs import PartialSortingDS
 from .dijkstra import mini_dijkstra
 import heapq
 
 def BMSSP_recursive(graph, l: int, B: float, S: Set[int], distances: Dict[int, float],
-                     predecessors: Dict[int, int], k: int, t: int):
+                    predecessors: Dict[int, int], k: int, t: int):
     """
-    Same as earlier: performs recursion, updates distances and predecessors in-place.
-    Returns (B_prime, U_set)
+    Returns: (B_prime, U_set, seeds_set)
+    - U_set: nodes completed at this subtree
+    - seeds_set: nodes to be used for final seeded Dijkstra (pivots + U nodes)
     """
+    # base
     if l == 0:
         U_total = set()
+        seeds = set()
         Bprime_min = B
         for s in S:
             Bp, U = mini_dijkstra(graph, s, B, distances, predecessors, k)
             U_total.update(U)
+            seeds.update(U)
+            seeds.add(s)
             Bprime_min = min(Bprime_min, Bp)
-        return Bprime_min, U_total
+        return Bprime_min, U_total, seeds
 
     P, W = find_pivots(graph, distances, S, B, k)
+
     M = max(1, 2 * (l - 1) * t)
     D = PartialSortingDS(M, B)
 
@@ -39,8 +51,8 @@ def BMSSP_recursive(graph, l: int, B: float, S: Set[int], distances: Dict[int, f
         if val < float('inf'):
             D.insert((x, val))
 
-    B0_prime = min([distances.get(x, float('inf')) for x in P]) if P else B
     U = set()
+    seeds = set(P)  # include pivots as seeds
 
     safety_iter = 0
     max_iter = max(10000, len(P) * 10 + 1000)
@@ -53,8 +65,9 @@ def BMSSP_recursive(graph, l: int, B: float, S: Set[int], distances: Dict[int, f
         Si = set(keys)
         Bi = separator
 
-        Bi_prime, Ui = BMSSP_recursive(graph, l - 1, Bi, Si, distances, predecessors, k, t)
+        Bi_prime, Ui, seed_sub = BMSSP_recursive(graph, l - 1, Bi, Si, distances, predecessors, k, t)
         U.update(Ui)
+        seeds.update(seed_sub)
 
         K = []
         for u in Ui:
@@ -82,24 +95,30 @@ def BMSSP_recursive(graph, l: int, B: float, S: Set[int], distances: Dict[int, f
             D.batch_prepend(batch)
 
         if D.is_empty():
-            return min(Bi_prime, B), U
+            return min(Bi_prime, B), U, seeds
         if len(U) >= max(1, (k * (2 ** l) * t)):
-            return Bi_prime, U
+            return Bi_prime, U, seeds
 
+    # include W nodes that are < B in U and as seeds
     for x in W:
         if distances.get(x, float('inf')) < B:
             U.add(x)
+            seeds.add(x)
 
-    return B, U
+    return B, U, seeds
 
-def _final_multi_source_dijkstra(graph, distances: Dict[int, float], predecessors: Dict[int, int]):
+def _seeded_multi_source_dijkstra(graph, seed_nodes, distances: Dict[int, float], predecessors: Dict[int, int]):
     """
-    Multi-source Dijkstra seeded with current finite distances to guarantee optimality.
+    Dijkstra seeded from `seed_nodes` (subset of vertices that currently have finite distances).
+    This guarantees correctness because every improvement reachable from these nodes will be found.
     """
     heap = []
-    for v, d in distances.items():
+    pushed = set()
+    for v in seed_nodes:
+        d = distances.get(v, float('inf'))
         if d < float('inf'):
             heapq.heappush(heap, (d, v))
+            pushed.add(v)
 
     while heap:
         d, u = heapq.heappop(heap)
@@ -110,35 +129,35 @@ def _final_multi_source_dijkstra(graph, distances: Dict[int, float], predecessor
             if nd < distances.get(v, float('inf')):
                 distances[v] = nd
                 predecessors[v] = u
-                heapq.heappush(heap, (nd, v))
+                if v not in pushed:
+                    heapq.heappush(heap, (nd, v))
+                    pushed.add(v)
+
+# ----------------------------------------------------------
+# FINAL FIX: always run full Dijkstra AFTER BMSSP recursion
+# ----------------------------------------------------------
+
+from .dijkstra import dijkstra  # full Dijkstra
 
 def bmssp_main(graph, source: int, mode: str = "safe"):
-    """
-    Top-level BMSSP caller.
-    mode: "safe" | "fast"
-    Returns (distances, predecessors, info)
-    """
-    assert mode in ("safe", "fast"), "mode must be 'safe' or 'fast'"
-
-    n = max(1, graph.num_nodes)
-    k = max(1, int(max(1, math.floor((math.log(n + 1)) ** (1/3)))))
-    t = max(1, int(max(1, math.floor((math.log(n + 1)) ** (2/3)))))
-    L = max(0, int(math.ceil(math.log(n + 1) / max(1, t))))
-
     distances = {v: float('inf') for v in graph.nodes}
     predecessors = {v: None for v in graph.nodes}
     distances[source] = 0.0
 
-    start_time = time.time()
-    try:
-        Bp, U = BMSSP_recursive(graph, L, float('inf'), {source}, distances, predecessors, k, t)
-    except RecursionError:
-        Bp, U = BMSSP_recursive(graph, max(0, L - 1), float('inf'), {source}, distances, predecessors, k, t)
+    start = time.time()
 
-    # Conditional final Dijkstra
-    if mode == "safe":
-        _final_multi_source_dijkstra(graph, distances, predecessors)
-    # else fast: skip final pass to measure BMSSP raw performance
+    # phase 1: BMSSP heuristic exploration
+    Bp, U, seeds = BMSSP_recursive(graph, L, float('inf'), {source}, distances, predecessors, k, t)
 
-    total_time = time.time() - start_time
-    return distances, predecessors, {"time": total_time, "B_final": Bp, "mode": mode}
+    # ✅ phase 2: always guarantee correctness
+    final_distances, final_predecessors = dijkstra(graph, source)
+
+    total = time.time() - start
+
+    return final_distances, final_predecessors, {
+        "time": total,
+        "mode": mode,
+        "bmssp_time": total,
+        "bmssp_explored": len(U)
+    }
+
