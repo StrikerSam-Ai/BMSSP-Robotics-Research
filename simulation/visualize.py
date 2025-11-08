@@ -17,7 +17,9 @@ world = GridWorld(world_size)
 world.randomize_obstacles()
 
 # build graph from grid
-graph = Graph()
+total_nodes = world_size * world_size
+graph = Graph(total_nodes)
+
 for i in range(world_size):
     for j in range(world_size):
         if world.is_free(i, j):
