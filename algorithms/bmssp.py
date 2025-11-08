@@ -87,4 +87,23 @@ def BMSSP_recursive(graph, l: int, B: float, S: Set[int], distances: Dict[int, f
             U.add(x)
     return B_final, U
 
-
+def bmssp_main(graph, source: int):
+    """
+    Top-level BMSSP caller. Sets parameters k,t and calls recursive routine.
+    Returns distances dict and predecessors dict.
+    """
+    n = max(1, graph.num_nodes)
+    # Parameters from paper
+    k = max(1, int(max(1, math.floor(math.log(n + 1) ** (1/3)))))
+    t = max(1, int(max(1, math.floor(math.log(n + 1) ** (2/3)))))
+    # To keep recursion depth manageable choose L = ceil(log(n)/t)
+    L = max(0, int(math.ceil(math.log(n + 1) / max(1, t))))
+    # init distances / predecessors
+    distances = {v: float('inf') for v in graph.nodes}
+    predecessors = {v: None for v in graph.nodes}
+    distances[source] = 0.0
+    # call BMSSP
+    start = time.time()
+    Bp, U = BMSSP_recursive(graph, L, float('inf'), {source}, distances, predecessors, k, t)
+    total_time = time.time() - start
+    return distances, predecessors, {"time": total_time, "B_final": Bp}
