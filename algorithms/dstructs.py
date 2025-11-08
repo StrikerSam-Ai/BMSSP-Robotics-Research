@@ -15,3 +15,39 @@ Design choices for practicality:
    is efficient for medium-scale graphs (50k nodes) as requested.
 """
 
+import bisect
+import heapq
+from collections import deque
+from typing import List, Tuple, Dict, Any, Optional
+
+class Block:
+    def __init__(self, items: List[Tuple[int, float]] = None):
+        # items: list of (key, value)
+        self.items = items or []
+        # maintain an upper bound value for block
+        self.update_bound()
+    
+    def update_bound(self):
+        if not self.items:
+            self.ub = float('inf')
+        else:
+            # ub is max value in items
+            self.ub = max(v for _, v in self.items)
+    
+    def push(self, pair: Tuple[int, float]):
+        self.items.append(pair)
+        if pair[1] > self.ub:
+            self.ub = pair[1]
+    
+    def extend(self, pairs: List[Tuple[int, float]]):
+        self.items.extend(pairs)
+        if pairs:
+            self.ub = max(self.ub, max(v for _, v in pairs))
+    
+    def pop_all(self) -> List[Tuple[int, float]]:
+        items = self.items
+        self.items = []
+        self.ub = float('inf')
+        return items
+
+
