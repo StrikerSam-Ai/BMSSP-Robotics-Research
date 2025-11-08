@@ -19,3 +19,24 @@ with an aim to apply to robotics path planning (warehouse AGV scenarios).
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+
+## BMSSP Modes
+
+bmssp supports two modes:
+
+- `safe` (default): runs a final multi-source Dijkstra pass to guarantee correctness.
+- `fast` : skips the final Dijkstra verification to measure raw BMSSP performance (paper-like).
+
+Example:
+```bash
+python -m benchmarks.run_benchmark --n 30000 --deg 4 --mode fast
+
+
+---
+
+## How to run (commands)
+
+1. **Safe mode (correctness guaranteed, slower)**
+
+```bash
+python -m benchmarks.run_benchmark --n 30000 --deg 4 --mode safe
