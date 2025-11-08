@@ -5,10 +5,10 @@ Per Lemma 3.2: given bound B and set S, perform k-step relaxations (bounded Bell
 to grow W. If W becomes large (> k|S|) return P = S. Otherwise, build forest among W using predecessor
 relationships and select pivots P as roots of subtrees with size >= k.
 
-This practical version uses local BFS-style expansion for k rounds and maintains predecessors.
+This version is careful to update distances in-place and maintain predecessors for forest building.
 """
 
-from collections import deque, defaultdict
+from collections import defaultdict
 from typing import Set, Tuple, Dict, List
 
 def find_pivots(graph, distances: Dict[int, float], S: Set[int], B: float, k: int):
@@ -23,42 +23,49 @@ def find_pivots(graph, distances: Dict[int, float], S: Set[int], B: float, k: in
     # W starts with S
     W = set(S)
     frontier = set(S)
-    # We'll update distances transiently but keep predecessors to build forest F
+    # predecessors discovered during these k rounds
     pred = {}
+
     for _ in range(k):
         new_frontier = set()
         for u in list(frontier):
             d_u = distances.get(u, float('inf'))
+            # if u is already at/above B then it cannot help
             if d_u >= B:
                 continue
             for v, w in graph.get_neighbors(u):
                 newd = d_u + w
+                # only consider relaxations strictly improving known distance and below B
                 if newd < distances.get(v, float('inf')) and newd < B:
                     distances[v] = newd
                     pred[v] = u
                     new_frontier.add(v)
                     W.add(v)
         frontier = new_frontier
-        if len(W) > k * len(S):
-            # early exit
+        if len(W) > k * max(1, len(S)):
+            # early exit: workload large, return P = S
             return set(S), W
-    # Now when |W| <= k|S| build forest over W using pred
-    # Build adjacency child lists
+
+    # If we are here, |W| <= k|S|. Build forest F over W using pred to find subtree sizes.
     children = defaultdict(list)
-    roots = set()
-    for v, parent in pred.items():
+    has_parent = set()
+    for child, parent in pred.items():
         if parent in W:
-            children[parent].append(v)
-        else:
-            # If parent not in W, treat v as root (rare)
-            roots.add(v)
-    # Any node in S that has no parent recorded becomes a root if in W
+            children[parent].append(child)
+            has_parent.add(child)
+
+    # determine potential roots: nodes in S that are in W (and have children or not)
+    roots = set()
     for s in S:
         if s in W:
-            if s not in pred:
-                roots.add(s)
-    # Compute subtree sizes via DFS
-    visited = set()
+            roots.add(s)
+
+    # also any node in W without a parent recorded may be treated as a root
+    for node in W:
+        if node not in has_parent and node not in roots:
+            roots.add(node)
+
+    # compute subtree sizes via DFS (memoized)
     subtree_size = {}
     def dfs(u):
         if u in subtree_size:
@@ -68,14 +75,18 @@ def find_pivots(graph, distances: Dict[int, float], S: Set[int], B: float, k: in
             total += dfs(v)
         subtree_size[u] = total
         return total
+
     for r in list(roots):
         dfs(r)
+
     # Select pivots among S: those roots with subtree size >= k
     P = set()
     for s in S:
         if s in subtree_size and subtree_size[s] >= k:
             P.add(s)
-    # If P empty, fallback: choose S (safe)
+
+    # If no pivots found, fallback to returning S to be conservative
     if not P:
         P = set(S)
+
     return P, W
