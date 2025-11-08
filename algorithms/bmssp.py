@@ -18,7 +18,7 @@ import time
 from typing import Set, Dict, Tuple
 from .pivot import find_pivots
 from .dstructs import PartialSortingDS
-from .dijkstra import mini_dijkstra
+from .dijkstra import dijkstra  # full Dijkstra
 import heapq
 
 def BMSSP_recursive(graph, l: int, B: float, S: Set[int], distances: Dict[int, float],
@@ -137,7 +137,7 @@ def _seeded_multi_source_dijkstra(graph, seed_nodes, distances: Dict[int, float]
 # FINAL FIX: always run full Dijkstra AFTER BMSSP recursion
 # ----------------------------------------------------------
 
-from .dijkstra import dijkstra  # full Dijkstra
+
 
 def bmssp_main(graph, source: int, mode: str = "safe"):
     distances = {v: float('inf') for v in graph.nodes}
