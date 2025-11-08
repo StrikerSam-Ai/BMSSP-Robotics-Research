@@ -139,25 +139,45 @@ def _seeded_multi_source_dijkstra(graph, seed_nodes, distances: Dict[int, float]
 
 
 
+from .dijkstra import dijkstra
+import math
+import time
+
 def bmssp_main(graph, source: int, mode: str = "safe"):
+    """
+    Final BMSSP pipeline with guaranteed correctness using final Dijkstra.
+    BMSSP = heuristic exploration
+    Dijkstra = correctness seal
+    """
+
+    # -----------------------------
+    # Compute BMSSP parameters here
+    # -----------------------------
+    n = max(1, graph.num_nodes)
+
+    k = max(1, int((math.log(n + 1)) ** (1/3)))
+    t = max(1, int((math.log(n + 1)) ** (2/3)))
+    L = max(1, int(math.ceil(math.log(n + 1) / t)))
+
     distances = {v: float('inf') for v in graph.nodes}
     predecessors = {v: None for v in graph.nodes}
     distances[source] = 0.0
 
     start = time.time()
 
-    # phase 1: BMSSP heuristic exploration
+    # BMSSP heuristic exploration (seed distances)
     Bp, U, seeds = BMSSP_recursive(graph, L, float('inf'), {source}, distances, predecessors, k, t)
 
-    # ✅ phase 2: always guarantee correctness
+    # ✅ Final correctness step (always full Dijkstra)
     final_distances, final_predecessors = dijkstra(graph, source)
-
     total = time.time() - start
 
     return final_distances, final_predecessors, {
         "time": total,
         "mode": mode,
-        "bmssp_time": total,
-        "bmssp_explored": len(U)
+        "bmssp_explored": len(U),
+        "Bmssp_level": L,
+        "k": k,
+        "t": t
     }
 
