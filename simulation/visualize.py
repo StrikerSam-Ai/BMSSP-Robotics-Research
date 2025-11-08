@@ -2,8 +2,8 @@
 
 import pygame
 import random
-from grid_world import GridWorld
-from robot_sim import Robot
+from simulation.grid_world import GridWorld
+from simulation.robot_sim import Robot
 from core.graph import Graph
 
 pygame.init()
