@@ -6,7 +6,7 @@ from algorithms.dijkstra import dijkstra
 class Robot:
     def __init__(self, world, start=(0, 0), goal=(49, 49), mode="bmssp"):
         self.world = world
-        self.x, self.y = start
+        self.start = start
         self.goal = goal
         self.mode = mode
 
