@@ -1,13 +1,10 @@
-import sys
-import os
-
-# add parent folder to python path
+import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from algorithms.bmssp import bmssp_main
 from simulation.grid_world import generate_grid_graph
 from coppeliasim_zmqremoteapi_client import RemoteAPIClient
-import time
+
 
 
 
@@ -29,8 +26,10 @@ print("✅ Robot handle acquired")
 # ---------------------------------------
 # ✅ Generate grid and compute path
 # ---------------------------------------
-graph = generate_grid_graph(GRID_SIZE)
+graph, obstacles = generate_grid_graph()
+
 dist, pred, _ = bmssp_main(graph, START)
+
 
 path = []
 cur = GOAL
