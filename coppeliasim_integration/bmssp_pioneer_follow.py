@@ -26,9 +26,12 @@ print("✅ Robot handle acquired")
 # ---------------------------------------
 # ✅ Generate grid and compute path
 # ---------------------------------------
-graph, obstacles = generate_grid_graph()
+# build grid graph
+graph, obstacles = generate_grid_graph(rows=50, cols=50, obstacle_prob=0.25)
 
+START = 0
 dist, pred, _ = bmssp_main(graph, START)
+
 
 
 path = []
