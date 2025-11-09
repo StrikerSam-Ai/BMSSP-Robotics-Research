@@ -1,96 +1,46 @@
-"""
-BMSSP → Pioneer P3DX CoppeliaSim Integration
-Author: Sam (BMSSP Robotics Research – Case Study)
-"""
+# coppeliasim_integration/bmssp_pioneer_follow.py
 
-import sys, os, time, math
-from collections import deque
-
-# ✅ Add repo root to import search path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-# ✅ Internal project imports
-from algorithms.bmssp import bmssp_main
-from simulation.grid_world import generate_grid_graph
-
-# ✅ CoppeliaSim ZMQ API
 from coppeliasim_zmqremoteapi_client import RemoteAPIClient
+from simulation.grid_world import generate_grid_graph
+from algorithms.bmssp import bmssp_main
+import time
+import math
 
+START = (0, 0)
+GOAL = (49, 49)
 
-# ------------------------------------------------------------------------------------
-# Convert grid cell to world coordinates of Pioneer robot
-# ------------------------------------------------------------------------------------
-def grid_to_world(r, c, scale=0.1):
-    return [c * scale, r * scale, 0.138]  # z = robot height
+def move_robot(sim, robot, path):
+    for (x, y) in path:
+        target_pos = [x * 0.1, y * 0.1, 0.138]  # scale to meters for CoppeliaSim
+        sim.setObjectPosition(robot, -1, target_pos)
+        time.sleep(0.1)
 
+print("🔵 Connecting to CoppeliaSim ...")
+client = RemoteAPIClient()
+sim = client.getObject("sim")
 
-# ------------------------------------------------------------------------------------
-# Rotate robot towards next direction
-# ------------------------------------------------------------------------------------
-def rotate_robot(sim, robot, current, target):
-    dx = target[0] - current[0]
-    dy = target[1] - current[1]
-    yaw = math.atan2(dy, dx)
-    sim.setObjectOrientation(robot, [0, 0, yaw])
-    time.sleep(0.1)  # small delay for visualization
+print("🟢 Connected to CoppeliaSim")
 
+robot = sim.getObject('/PioneerP3DX')
+print("🟢 Robot handle acquired")
 
-# ------------------------------------------------------------------------------------
-# Move robot smoothly to the next cell
-# ------------------------------------------------------------------------------------
-def move_robot(sim, robot, pos):
-    sim.setObjectTargetPosition(robot, pos)
-    time.sleep(0.5)  # ⏳ movement visible (slow motion)
-
-
-# ------------------------------------------------------------------------------------
-# MAIN
-# ------------------------------------------------------------------------------------
-if __name__ == "__main__":
-
-    print("🔄 Connecting to CoppeliaSim ...")
-
-    client = RemoteAPIClient()
-    sim = client.getObject("sim")
-    print("✅ Connected to CoppeliaSim")
-
-    # Get Pioneer handle (change name here if your model name differs)
-    robot = sim.getObject("/PioneerP3DX")
-    print("✅ Robot handle acquired")
-
-    # ------------------------------------------------------------------------------
-    # Build grid & run BMSSP
-    # ------------------------------------------------------------------------------
-    graph, obstacles = generate_grid_graph(rows=50, cols=50, obstacle_prob=0.25)
-
-    START = 0
-    GOAL = 2499  # bottom-right corner 50x50 grid
-
-    dist, pred, _ = bmssp_main(graph, START)
-
-    # ------------------------------------------------------------------------------
-#  Run BMSSP and reconstruct path safely
-# ------------------------------------------------------------------------------
+graph, obstacles = generate_grid_graph(rows=50, cols=50, obstacle_prob=0.15)
 
 dist, pred, _ = bmssp_main(graph, START)
 
-path = deque()
+# Backtrack shortest predecessor chain
+path = []
 node = GOAL
 
-if pred.get(node, None) is None:
-    print("❌ No path found! Obstacles blocked the goal.")
+while node in pred:
+    path.append(node)
+    node = pred[node]
 
-    # regenerate once more
-    graph, obstacles = generate_grid_graph()
-    dist, pred, _ = bmssp_main(graph, START)
+path.reverse()
 
-# ✅ path reconstruction (no crash now)
-while node is not None and pred.get(node) is not None:
-    path.appendleft(node)
-    node = pred.get(node)
-
-if len(path) <= 1:
-    print("⚠ Could not compute valid path even after retry.")
-    sys.exit(0)
-
-
+if len(path) == 0:
+    print("❌ No path found")
+else:
+    print(f"✅ Path found — total {len(path)} steps")
+    move_robot(sim, robot, path)
+    print("🎉 Goal reached successfully!")
