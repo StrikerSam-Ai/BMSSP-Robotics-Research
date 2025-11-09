@@ -1,30 +1,27 @@
-# simulation/grid_world.py
-
 from core.graph import Graph
 import random
 
-def generate_grid_graph(rows=50, cols=50, obstacle_prob=0.15):
-    graph = Graph()
-    obstacles = []
+def generate_grid_graph(rows=50, cols=50, obstacle_prob=0.20):
+    total_nodes = rows * cols
+    graph = Graph(total_nodes)
 
-    # Add nodes
-    for x in range(rows):
-        for y in range(cols):
-            graph.add_node((x, y))
+    obstacles = set()
+    for r in range(rows):
+        for c in range(cols):
+            node = r * cols + c
 
-    # Add edges + mark obstacles
-    for x in range(rows):
-        for y in range(cols):
-
-            # Random obstacle placement
-            if random.random() < obstacle_prob:
-                obstacles.append((x, y))
-                graph.remove_node((x, y))
+            if random.random() < obstacle_prob:  # create random obstacle
+                obstacles.add(node)
                 continue
 
-            neighbors = [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
-            for nx, ny in neighbors:
-                if (nx, ny) in graph.nodes:
-                    graph.add_edge((x, y), (nx, ny), weight=1)
+            # Add edges (4-neighbors)
+            if r > 0 and (node - cols) not in obstacles:
+                graph.add_edge(node, node - cols)
+            if r < rows - 1:
+                graph.add_edge(node, node + cols)
+            if c > 0 and (node - 1) not in obstacles:
+                graph.add_edge(node, node - 1)
+            if c < cols - 1:
+                graph.add_edge(node, node + 1)
 
     return graph, obstacles
