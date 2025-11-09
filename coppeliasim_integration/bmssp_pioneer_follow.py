@@ -1,15 +1,14 @@
-from coppeliasim_zmqremoteapi_client import RemoteAPIClient
-import time
-import math
-
-# ---------------------------------------
-# ✅ Modify here: import your BMSSP algorithm
-# ---------------------------------------
 import sys
-sys.path.append("..")          # ensures parent folder added to path
+import os
+
+# add parent folder to python path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from algorithms.bmssp import bmssp_main
-from simulation.grid_world import generate_grid_graph  # benchmark wala nahi simulation wala
+from simulation.grid_world import generate_grid_graph
+from coppeliasim_zmqremoteapi_client import RemoteAPIClient
+import time
+
 
 
 GRID_SIZE = 50
