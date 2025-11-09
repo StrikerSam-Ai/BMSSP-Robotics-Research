@@ -68,32 +68,33 @@ if __name__ == "__main__":
 
     dist, pred, _ = bmssp_main(graph, START)
 
-    # reconstruct shortest path
-    path = deque()
+    # ------------------------------------------------------------------------------
+#  Run BMSSP and reconstruct path safely
+# ------------------------------------------------------------------------------
+
+dist, pred, _ = bmssp_main(graph, START)
+
+path = deque()
+node = GOAL
+
+# ✅ If GOAL unreachable, regenerate graph instead of crashing
+if pred.get(node, None) is None:
+    print("\n❌ No path found! Obstacles blocked the goal.")
+    print("🔄 Regenerating new grid and trying again...\n")
+
+    graph, obstacles = generate_grid_graph(rows=50, cols=50, obstacle_prob=0.20)
+    dist, pred, _ = bmssp_main(graph, START)
     node = GOAL
-    while node != -1:
-        path.appendleft(node)
-        node = pred[node]
 
-    print(f"✅ Path length: {len(path)} nodes")
+# ✅ Safe reconstruction (avoid KeyError None)
+while node is not None and pred.get(node, None) is not None:
+    path.appendleft(node)
+    node = pred.get(node, None)
 
-    # ------------------------------------------------------------------------------
-    # Execute path in CoppeliaSim
-    # ------------------------------------------------------------------------------
-    print("🚀 Starting robot movement using BMSSP path")
+# If path is empty, stop
+if len(path) <= 1:
+    print("⚠ Could not compute valid path even after retry.")
+    sys.exit(0)
 
-    # Set initial robot orientation
-    prev_pos = grid_to_world(*divmod(START, 50))
-    sim.setObjectPosition(robot, prev_pos)
+print(f"✅ Path length: {len(path)} nodes")
 
-    for node in path:
-        r, c = divmod(node, 50)
-        new_pos = grid_to_world(r, c)
-
-        rotate_robot(sim, robot, prev_pos, new_pos)  # rotate first
-        print(f"➡ Moving to cell ({r}, {c}) → world-pos {new_pos}")
-
-        move_robot(sim, robot, new_pos)  # move forward
-        prev_pos = new_pos
-
-    print("🎉 Path following complete! Robot reached the goal.")
