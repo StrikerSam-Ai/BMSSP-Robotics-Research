@@ -1,18 +1,28 @@
 # core/graph.py
 
-from typing import List, Tuple, Dict
-
 class Graph:
-    def __init__(self, num_nodes):
-        self.num_nodes = num_nodes
-        self.nodes = list(range(num_nodes))
+    def __init__(self):
+        self.nodes = set()
         self.edges = []
-        self.adj_list = [[] for _ in range(num_nodes)]
+        self.adj_list = {}
 
-    def add_edge(self, u, v, w=1):
-        self.edges.append((u, v, w))
-        self.adj_list[u].append((v, w))
+    def add_node(self, node):
+        if node not in self.nodes:
+            self.nodes.add(node)
+            self.adj_list[node] = []
 
-    def get_neighbors(self, u):
-        return self.adj_list[u]
+    def add_edge(self, src, dst, weight=1):
+        if src in self.nodes and dst in self.nodes:
+            self.edges.append((src, dst, weight))
+            self.adj_list[src].append((dst, weight))
 
+    def remove_node(self, node):
+        if node in self.nodes:
+            self.nodes.remove(node)
+
+        if node in self.adj_list:
+            del self.adj_list[node]
+
+        # Remove edges pointing to removed node
+        for src in list(self.adj_list.keys()):
+            self.adj_list[src] = [(dst, w) for dst, w in self.adj_list[src] if dst != node]

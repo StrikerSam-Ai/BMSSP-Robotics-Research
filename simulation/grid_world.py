@@ -1,33 +1,30 @@
-import random
+# simulation/grid_world.py
+
 from core.graph import Graph
+import random
 
-def generate_grid_graph(rows=50, cols=50, obstacle_prob=0.18):
-    graph = Graph(rows * cols)
-    obstacles = set()
+def generate_grid_graph(rows=50, cols=50, obstacle_prob=0.15):
+    graph = Graph()
+    obstacles = []
 
-    for r in range(rows):
-        for c in range(cols):
-            idx = r * cols + c
+    # Add nodes
+    for x in range(rows):
+        for y in range(cols):
+            graph.add_node((x, y))
 
-            # START allowed, GOAL allowed
-            if (r, c) in [(0, 0), (rows - 1, cols - 1)]:
-                continue  
+    # Add edges + mark obstacles
+    for x in range(rows):
+        for y in range(cols):
 
-            # FIX ✅ reduce randomness & give path guarantee
+            # Random obstacle placement
             if random.random() < obstacle_prob:
-                obstacles.add(idx)
+                obstacles.append((x, y))
+                graph.remove_node((x, y))
+                continue
 
-            # add neighbors (4-way connectivity)
-            if c > 0:  
-                graph.add_edge(idx, idx - 1, 1)
-                graph.add_edge(idx - 1, idx, 1)
-
-            if r > 0:
-                graph.add_edge(idx, idx - cols, 1)
-                graph.add_edge(idx - cols, idx, 1)
-
-    # ✅ Hardcode a guaranteed corridor from START → GOAL
-    for i in range(rows):
-        obstacles.discard(i * cols)  # clear first column
+            neighbors = [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
+            for nx, ny in neighbors:
+                if (nx, ny) in graph.nodes:
+                    graph.add_edge((x, y), (nx, ny), weight=1)
 
     return graph, obstacles
