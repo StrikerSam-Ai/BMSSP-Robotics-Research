@@ -1,4 +1,8 @@
 # coppeliasim_integration/bmssp_pioneer_follow.py
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 
 from coppeliasim_zmqremoteapi_client import RemoteAPIClient
 from simulation.grid_world import generate_grid_graph
