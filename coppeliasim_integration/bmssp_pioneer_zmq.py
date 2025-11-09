@@ -1,4 +1,11 @@
-from zmqRemoteApi import RemoteAPIClient
+try:
+    from zmqRemoteApi import RemoteAPIClient
+except Exception:
+    import sys
+    import subprocess
+    print("[INFO] 'zmqRemoteApi' not found, attempting to install via pip...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "zmqRemoteApi"])
+    from zmqRemoteApi import RemoteAPIClient
 import time
 import math
 
