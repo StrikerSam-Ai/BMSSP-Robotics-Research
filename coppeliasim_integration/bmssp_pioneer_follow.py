@@ -77,24 +77,20 @@ dist, pred, _ = bmssp_main(graph, START)
 path = deque()
 node = GOAL
 
-# ✅ If GOAL unreachable, regenerate graph instead of crashing
 if pred.get(node, None) is None:
-    print("\n❌ No path found! Obstacles blocked the goal.")
-    print("🔄 Regenerating new grid and trying again...\n")
+    print("❌ No path found! Obstacles blocked the goal.")
 
-    graph, obstacles = generate_grid_graph(rows=50, cols=50, obstacle_prob=0.20)
+    # regenerate once more
+    graph, obstacles = generate_grid_graph()
     dist, pred, _ = bmssp_main(graph, START)
-    node = GOAL
 
-# ✅ Safe reconstruction (avoid KeyError None)
-while node is not None and pred.get(node, None) is not None:
+# ✅ path reconstruction (no crash now)
+while node is not None and pred.get(node) is not None:
     path.appendleft(node)
-    node = pred.get(node, None)
+    node = pred.get(node)
 
-# If path is empty, stop
 if len(path) <= 1:
     print("⚠ Could not compute valid path even after retry.")
     sys.exit(0)
 
-print(f"✅ Path length: {len(path)} nodes")
 

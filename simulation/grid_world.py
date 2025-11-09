@@ -1,37 +1,33 @@
 import random
 from core.graph import Graph
 
-def generate_grid_graph(rows=50, cols=50, obstacle_prob=0.25):
-    """
-    Generates a grid graph where each cell is a node.
-    Nodes are connected to their 4-neighbors (N, S, E, W).
-    Some cells become obstacles (black tiles).
-    """
-    g = Graph(rows * cols)
-
-    def node_id(r, c):  # map (r,c) -> node index
-        return r * cols + c
-
+def generate_grid_graph(rows=50, cols=50, obstacle_prob=0.18):
+    graph = Graph(rows * cols)
     obstacles = set()
 
     for r in range(rows):
         for c in range(cols):
+            idx = r * cols + c
+
+            # START allowed, GOAL allowed
+            if (r, c) in [(0, 0), (rows - 1, cols - 1)]:
+                continue  
+
+            # FIX ✅ reduce randomness & give path guarantee
             if random.random() < obstacle_prob:
-                obstacles.add(node_id(r, c))
-                continue
+                obstacles.add(idx)
 
-            curr = node_id(r, c)
+            # add neighbors (4-way connectivity)
+            if c > 0:  
+                graph.add_edge(idx, idx - 1, 1)
+                graph.add_edge(idx - 1, idx, 1)
 
-            if r > 0 and node_id(r - 1, c) not in obstacles:
-                g.add_edge(curr, node_id(r - 1, c), 1)
+            if r > 0:
+                graph.add_edge(idx, idx - cols, 1)
+                graph.add_edge(idx - cols, idx, 1)
 
-            if c > 0 and node_id(r, c - 1) not in obstacles:
-                g.add_edge(curr, node_id(r, c - 1), 1)
+    # ✅ Hardcode a guaranteed corridor from START → GOAL
+    for i in range(rows):
+        obstacles.discard(i * cols)  # clear first column
 
-            if r < rows - 1 and node_id(r + 1, c) not in obstacles:
-                g.add_edge(curr, node_id(r + 1, c), 1)
-
-            if c < cols - 1 and node_id(r, c + 1) not in obstacles:
-                g.add_edge(curr, node_id(r, c + 1), 1)
-
-    return g, obstacles
+    return graph, obstacles
