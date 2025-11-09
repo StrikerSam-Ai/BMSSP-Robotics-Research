@@ -5,8 +5,12 @@ import math
 # ---------------------------------------
 # ✅ Modify here: import your BMSSP algorithm
 # ---------------------------------------
+import sys
+sys.path.append("..")          # ensures parent folder added to path
+
 from algorithms.bmssp import bmssp_main
-from benchmarks.grid_graph import generate_grid_graph
+from simulation.grid_world import generate_grid_graph  # benchmark wala nahi simulation wala
+
 
 GRID_SIZE = 50
 START = (0, 0)
