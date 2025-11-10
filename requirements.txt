@@ -1,0 +1,10 @@
+# Minimal runtime & test dependencies for BMSSP-Robotics-Research
+# - pygame: visualization (simulation/visualize.py)
+# - pytest: unit tests (tests/)
+
+pygame>=2.1
+pytest>=7.0
+
+# Optional / environment-specific:
+# pyzmq  # if using ZeroMQ-based CoppeliaSim integrations
+# numpy  # if large numeric arrays are introduced in benchmarks
